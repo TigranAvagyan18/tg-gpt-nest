@@ -116,7 +116,7 @@ export class PaymentService {
 		let msg = '';
 
 		if (rate && rate.price === Number(data.withdraw_amount)) {
-			await this.userService.updateLimits(user.telegramId, {
+			await this.userService.updateLimits(user, {
 				tokens: rate.tokens,
 				audio: rate.audio,
 				images: rate.images
@@ -127,6 +127,7 @@ export class PaymentService {
 			const sum = this.getSumOfBooking(booking);
 			if (sum === Number(data.withdraw_amount)) {
 				user.bookedTokens += booking.tokens || 0;
+				await user.save();
 				msg = 'Поздравляем с покупкой';
 			}
 		}
