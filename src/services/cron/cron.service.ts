@@ -21,11 +21,11 @@ export class CronService {
 		private readonly subscriptionService: SubscriptionService
 	) {}
 
-	@Cron(CronExpression.EVERY_SECOND, {
+	@Cron(CronExpression.EVERY_HOUR, {
 		disabled: config.APP_ENV === 'dev'
 	})
 	async updateSubscriptions() {
-		this.logger.log('Working');
+		this.logger.log('Cron updateSubscriptions Working');
 
 		const users = await this.userRepository.find({ relations: ['subscription'] });
 		const usersToUpdate = await Promise.all(
@@ -55,6 +55,23 @@ export class CronService {
 
 		await this.userRepository.save(usersToUpdate);
 
-		this.logger.log('finish');
+		this.logger.log('Cron updateSubscriptions finish');
+	}
+
+	@Cron(CronExpression.EVERY_6_HOURS)
+	async updateUserNames() {
+		this.logger.log('Cron updateUserNames Working');
+
+		const users = await this.userRepository.find({});
+		const updatedUsers = await Promise.all(
+			users.map(async (user) => {
+				const tgUser = await this.bot.telegram.getChat(user.telegramId);
+				// @ts-ignore
+				user.userName = tgUser.username;
+				return user;
+			})
+		);
+		await this.userRepository.save(updatedUsers);
+		this.logger.log('Cron updateUserNames finish');
 	}
 }
