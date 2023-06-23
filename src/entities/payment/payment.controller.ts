@@ -1,4 +1,4 @@
-import { Controller, Get, Injectable, NotFoundException, Param, Res } from '@nestjs/common';
+import { Body, Controller, Get, Injectable, NotFoundException, Param, Post, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { PaymentService } from './payment.service';
 
@@ -15,5 +15,15 @@ export class PaymentController {
 			return;
 		}
 		throw new NotFoundException();
+	}
+
+	@Post('/')
+	async confirmPayment(@Body() body: any, @Res() res: Response) {
+		try {
+			await this.paymentService.confirmPayment(body);
+			return 'ok';
+		} catch (error) {
+			res.status(500).send();
+		}
 	}
 }

@@ -75,7 +75,7 @@ export class PaymentService {
 		console.log(price);
 		await payment.save();
 
-		const url = `${config.BACKEND_HOST}/pay/${payment.slug}`;
+		const url = `${config.BACKEND_HOST}/payment/${payment.slug}`;
 
 		return url;
 	}
