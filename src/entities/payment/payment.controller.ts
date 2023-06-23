@@ -19,6 +19,7 @@ export class PaymentController {
 
 	@Post('/')
 	async confirmPayment(@Body() body: any, @Res() res: Response) {
+		console.log(body);
 		try {
 			await this.paymentService.confirmPayment(body);
 			return 'ok';

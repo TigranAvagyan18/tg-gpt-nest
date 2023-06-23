@@ -72,7 +72,7 @@ export class PaymentService {
 
 		payment.slug = nanoid(7);
 		payment.sum = price;
-		console.log(price);
+
 		await payment.save();
 
 		const url = `${config.BACKEND_HOST}/payment/${payment.slug}`;
