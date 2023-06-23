@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+import * as crypto from 'crypto';
 import { nanoid } from 'nanoid';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -146,13 +146,13 @@ export class PaymentService {
 		str += `${data.codepro}&`;
 		str += `${config.YOOMONEY_TOKEN}&`;
 		str += data.label;
-
 		const result = crypto.createHash('sha1').update(str).digest('hex');
 		return result === hash;
 	}
 
 	getSumOfBooking(data: Exclude<CreatePayment['booking'], undefined>) {
 		const { tokens, images } = data;
-		return (tokens || 0) * BookingPrices.token + (images || 0) * BookingPrices.image;
+		const sum = (tokens || 0) * BookingPrices.token + (images || 0) * BookingPrices.image;
+		return +sum.toFixed(2);
 	}
 }
