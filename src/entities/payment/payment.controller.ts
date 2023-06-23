@@ -24,6 +24,7 @@ export class PaymentController {
 			await this.paymentService.confirmPayment(body);
 			return 'ok';
 		} catch (error) {
+			console.log('Payment', error);
 			res.status(500).send();
 		}
 	}
