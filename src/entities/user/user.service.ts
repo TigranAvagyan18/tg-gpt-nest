@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { InjectBot } from 'nestjs-telegraf';
 import { SubscriptionService } from 'src/entities/subscription/subscription.service';
 import { AppContext } from 'src/services/telegram/telegram.types';
+import translations from 'src/config/translations';
 import { User } from './user.entity';
 
 @Injectable()
@@ -31,7 +32,12 @@ export class UserService {
 				referrer.referralCount += 1;
 				referrer.availableTokens += 5000;
 				await referrer.save();
-				await this.bot.telegram.sendMessage(referrer.telegramId, 'Кто то зарегался по вашей ссылке');
+
+				const msg = translations.referrals.completed[referrer.language]
+					.replace(':username', user.userName ? `@${user.userName}` : '')
+					.replace(':count', referrer.referralCount.toString());
+
+				await this.bot.telegram.sendMessage(referrer.telegramId, msg);
 			}
 		}
 

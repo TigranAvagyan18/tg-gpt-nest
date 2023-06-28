@@ -1,6 +1,5 @@
 import * as crypto from 'crypto';
-import { nanoid } from 'nanoid';
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { InjectBot } from 'nestjs-telegraf';
@@ -15,7 +14,7 @@ import { Payment, Status } from './payment.entity';
 import { PaymentInfo } from './payment.types';
 
 type CreatePayment = {
-	rateId?: number;
+	rate?: string;
 	userId: number;
 	booking?: {
 		tokens?: number | null;
@@ -45,8 +44,11 @@ export class PaymentService {
 	}
 
 	async create(data: CreatePayment) {
-		const { userId, rateId, booking } = data;
-		const user = await this.userRepository.findOneBy({ id: userId });
+		const { userId, rate, booking } = data;
+		const user = await this.userService.findByTelegramId(userId);
+
+		if (!user || (!rate && !booking.tokens)) throw new NotFoundException();
+
 		const existingPayment = await this.paymentRepository.findOneBy({ userId: user?.id });
 
 		if (existingPayment && existingPayment.rateId && existingPayment.status !== Status.COMPLETE) {
@@ -59,33 +61,23 @@ export class PaymentService {
 
 		let price = 0;
 
-		if (data.rateId) {
-			const rate = await this.rateRepository.findOneBy({ id: rateId });
-			payment.rate = rate!;
-			price = rate!.price as number;
-		} else if (booking) {
+		if (rate) {
+			const rateToSave = await this.rateRepository.findOneBy({ name: rate });
+			payment.rate = rateToSave;
+			price = rateToSave.price;
+		} else if (booking.tokens) {
 			const bookingToCreate = this.bookingRepository.create(booking);
 			await bookingToCreate.save();
 			payment.booking = bookingToCreate;
 			price = this.getSumOfBooking(booking);
 		}
 
-		payment.slug = nanoid(7);
 		payment.sum = price;
 
 		await payment.save();
 
-		const url = `${config.BACKEND_HOST}/payment/${payment.slug}`;
+		const url = this.constructUrl(payment.id, price);
 
-		return url;
-	}
-
-	async getPaymentUrlBySlug(slug: string) {
-		const payment = await this.paymentRepository.findOneBy({ slug });
-
-		if (!payment) return null;
-
-		const url = this.constructUrl(payment.id, payment.sum);
 		return url;
 	}
 

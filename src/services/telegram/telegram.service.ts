@@ -11,6 +11,7 @@ import { SubscriptionService } from 'src/entities/subscription/subscription.serv
 import {
 	BUT_TOKENS_COMMAND,
 	IMAGE_COMMAND,
+	IMAGE_HEARS,
 	LANGUAGE_ACTION,
 	LANGUAGE_COMMAND,
 	LANGUAGE_HEARS,
@@ -29,6 +30,7 @@ import {
 } from 'src/config/constants';
 import translations from 'src/config/translations';
 import { getRole } from 'src/utils/roles';
+import config from 'src/config';
 import { OpenAI } from '../openai/openai.service';
 import { Audio } from '../audio/audio.service';
 import { TelegrafExceptionFilter } from './exception.filter';
@@ -94,16 +96,20 @@ export class Telegram {
 			subscriptionId: user.subscriptionId
 		};
 		await ctx.reply(
-			'Hello',
+			'Привет',
 			Markup.keyboard([
-				[translations.menu.language[language], translations.menu.profile[language]],
-				[translations.menu.model[language], translations.menu.roles[language]],
-				[translations.menu.subscribe[language]]
+				[translations.menu.language[language || Languages.RU], translations.menu.profile[language || Languages.RU]],
+				[translations.menu.model[language || Languages.RU], translations.menu.roles[language || Languages.RU]],
+				[translations.menu.subscribe[language || Languages.RU]]
 			])
 				.oneTime()
 				.resize()
 		);
-		await this.chooseLanguage(ctx);
+		if (language) {
+			await this.sendMenu(ctx, language);
+		} else {
+			await this.chooseLanguage(ctx);
+		}
 	}
 
 	// !HEARS AND COMMANDS
@@ -121,24 +127,34 @@ export class Telegram {
 	@Hears(PROFILE_HEARS)
 	@Command(PROFILE_COMMAND)
 	async showProfile(ctx: AppContext) {
-		const { telegramId, subscriptionId } = ctx.session;
+		const { telegramId, subscriptionId, language } = ctx.session;
 
 		const user = await this.userService.findByTelegramId(telegramId);
 
 		const subscription = await this.subscriptionService.getSubscriptionDetails(subscriptionId);
 
 		const message = `
-    Привет, ${ctx.message.from.first_name}!
-Токены: ${user?.availableTokens} / ${subscription?.tokens}
-Аудио: ${user?.availableAudio} / ${subscription?.audio}
-Картинки: ${user?.availableImages} / ${subscription?.images}
-Подписка: ${subscription?.name}
-Куплено токенов: ${user.bookedTokens}
-Приглашено: ${user.referralCount} пользователей
-Ссылка для прилашения: https://t.me/openaichatpro_bot?start=${telegramId}
+${translations.profile.limits[language]}
+${translations.profile.tokens[language]} ${user?.availableTokens} / ${subscription?.tokens}
+${translations.profile.audio[language]} ${user?.availableAudio} / ${subscription?.audio}
+${translations.profile.images[language]} ${user?.availableImages} / ${subscription?.images}
+${user.bookedTokens > 0 ? translations.profile.bookedTokens[language] : ''}
+${translations.profile.subscription[language]} ${subscription?.name}
+
+${translations.profile.limitsUpdate.content[language]}
+${translations.profile.limitsUpdate.date[language]}
+
+${translations.profile.referral.title[language]}
+${translations.profile.referral.invite[language]}
+${translations.profile.referral.invited[language]} ${user.referralCount}
+${translations.profile.referral.inviteLink[language]} [${
+			language === Languages.RU ? 'Ссылка' : 'Link'
+		}](${`https://t.me/openaichatpro_bot?start=${telegramId}`})
+
+
     `;
 
-		await ctx.reply(message);
+		await ctx.replyWithMarkdownV2(message);
 	}
 
 	@Hears(MODEL_HEARS)
@@ -169,19 +185,24 @@ export class Telegram {
 	@Hears(SUBSCRIPTION_HEARS)
 	@Command(SUBSCRIBE_COMMAND)
 	async chooseSubscription(ctx: AppContext) {
+		const { language } = ctx.session;
 		const buttons = (await this.subscriptionService.getAllSubscriptions()).map((rate) => [
-			Markup.button.callback(rate.name, `${rate.name}-${rate.id}`)
+			Markup.button.callback(rate.name, rate.name)
 		]);
 		buttons.shift();
-		await ctx.reply('Choose ', Markup.inlineKeyboard(buttons));
+		buttons.push([Markup.button.callback(translations.subscriptions.buy.content[language], 'buy')]);
+		console.log(buttons);
+		await ctx.reply(translations.subscriptions.choose[language], Markup.inlineKeyboard(buttons));
 	}
 
 	@Command(BUT_TOKENS_COMMAND)
 	async buyTokens(ctx: AppContext) {
+		const { language, telegramId } = ctx.session;
+
 		const amount = +ctx.message.text.split(' ')[1];
 
-		if (!Number.isInteger(amount)) {
-			await ctx.reply('Введите число');
+		if (Number.isNaN(amount)) {
+			await ctx.replyWithMarkdownV2(translations.subscriptions.buy.queryExample[language]);
 			return;
 		}
 
@@ -190,21 +211,28 @@ export class Telegram {
 			return;
 		}
 
-		const { userId } = ctx.session;
+		const price = this.paymentService.getSumOfBooking({ tokens: amount }).toString().replace('.', '\\.');
 
-		const url = await this.paymentService.create({
-			booking: {
-				tokens: amount
-			},
-			userId
-		});
-		await ctx.reply(url);
+		const msg = `
+${translations.subscriptions.buy.action.result[language].replace(':amount', amount.toString())}
+${translations.subscriptions.buy.action.price[language].replace(':price', price)}
+		`;
+
+		await ctx.replyWithMarkdownV2(
+			msg,
+			Markup.inlineKeyboard([
+				Markup.button.url(
+					translations.subscriptions.pay[language],
+					`${config.BACKEND_HOST}/payment/create/${telegramId}?tokens=${amount}`
+				)
+			])
+		);
 	}
 
 	@Command(RESTART_COMMAND)
 	async restart(ctx: AppContext) {
 		ctx.session.messages = [];
-		await ctx.reply('История очищена');
+		await ctx.reply('Контекст очищен');
 	}
 
 	// !ACTIONS
@@ -224,34 +252,7 @@ export class Telegram {
 		ctx.session.language = language;
 
 		await ctx.deleteMessage(ctx.callbackQuery.message.message_id);
-		await this.sendMenu(
-			ctx,
-			`ChatGPT готов к использованию!
-	
-				⚡️Бот использует модели GPT-3.5, GPT-4
-				
-				Вот некоторый список того, что умеет данный бот:
-				- Писать уникальные тексты
-				- Делать рерайт текстов
-				- Писать и редактировать код
-				- Перевод с любого языка
-				- Пересказывать что-либо
-				- и многое другое…
-				
-				Инструкция:
-				🔤 Чтобы получить текстовый ответ, напишите свой вопрос на любом языке. Также вы можете просто записать голосовое сообщение с вашим запросом.
-				🚀 Чтобы переключиться между моделями GPT-3.5 и GPT-4, используйте команду /choosemodel (обратите внимание, что модель GPT-4 доступна только по подписке).
-				✅ Символы необходимы для работы бота и учитываются как в запросе, так и в ответе, а также в истории переписки, поэтому, чтобы потратить меньше символов, используйте команду /deletecontext после окончания диалога.
-				👤 Чтобы посмотреть свой баланс, используйте команду /mybalance
-				💳 Для покупки и для управления подпиской используйте команду /subscription
-				
-				Ограничения:
-				😀 Каждый пользователь, использующий бесплатный тариф имеет ограничение на количество символов:
-				На данный момент у вас доступно 10 000 символов на день, но не больше чем 50 000 символов на месяц.
-				Вы можете отправлять запрос с помощью голосовых сообщений, но не больше чем 60 секунд на месяц.
-				`,
-			language
-		);
+		await this.sendMenu(ctx, language);
 	}
 
 	@Action(ROLE_ACTION)
@@ -287,17 +288,31 @@ export class Telegram {
 
 	@Action(SUBSCRIPTION_ACTION)
 	async generatePaymentUrl(ctx: AppContext) {
+		const { language, telegramId } = ctx.session;
 		// @ts-ignore
-		const rateId = +ctx.callbackQuery.data.at(-1);
-		const messageId = ctx.callbackQuery.message.message_id;
+		const rate = ctx.callbackQuery.data as 'Plus';
 
-		const { userId } = ctx.session;
-		const url = await this.paymentService.create({
-			rateId,
-			userId
-		});
-		await ctx.reply(url);
-		await ctx.deleteMessage(messageId);
+		await ctx.replyWithMarkdownV2(
+			translations.subscriptions[rate][language],
+			Markup.inlineKeyboard([
+				Markup.button.url(
+					translations.subscriptions.pay[language],
+					`${config.BACKEND_HOST}/payment/create/${telegramId}?rate=${rate}`
+				)
+			])
+		);
+	}
+
+	@Hears(IMAGE_HEARS)
+	async showImageMessage(ctx: AppContext) {
+		const { language } = ctx.session;
+		await ctx.replyWithMarkdownV2(translations.images.create[language]);
+	}
+
+	@Action('buy')
+	async showBuyMessage(ctx: AppContext) {
+		const { language } = ctx.session;
+		await ctx.replyWithMarkdownV2(translations.subscriptions.buy.tokens[language]);
 	}
 
 	// !GPT
@@ -438,12 +453,36 @@ export class Telegram {
 		}
 	}
 
-	async sendMenu(ctx: AppContext, message: string, language: Languages) {
+	async sendMenu(ctx: AppContext, language: Languages) {
 		await ctx.reply(
-			message,
+			`ChatGPT готов к использованию!
+	
+				⚡️Бот использует модели GPT-3.5, GPT-4
+				
+				Вот некоторый список того, что умеет данный бот:
+				- Писать уникальные тексты
+				- Делать рерайт текстов
+				- Писать и редактировать код
+				- Перевод с любого языка
+				- Пересказывать что-либо
+				- и многое другое…
+				
+				Инструкция:
+				🔤 Чтобы получить текстовый ответ, напишите свой вопрос на любом языке. Также вы можете просто записать голосовое сообщение с вашим запросом.
+				🚀 Чтобы переключиться между моделями GPT-3.5 и GPT-4, используйте команду /model (обратите внимание, что модель GPT-4 доступна только по подписке).
+				✅ Символы необходимы для работы бота и учитываются как в запросе, так и в ответе, а также в истории переписки, поэтому, чтобы потратить меньше символов, используйте команду /restart после окончания диалога.
+				👤 Чтобы посмотреть свой баланс, используйте команду /profile
+				💳 Для покупки и для управления подпиской используйте команду /subscribe
+				
+				Ограничения:
+				😀 Каждый пользователь, использующий бесплатный тариф имеет ограничение на количество символов:
+				На данный момент у вас доступно 10 000 символов на день, но не больше чем 50 000 символов на месяц.
+				Вы можете отправлять запрос с помощью голосовых сообщений, но не больше чем 60 секунд на месяц.
+				`,
 			Markup.keyboard([
 				[translations.menu.language[language], translations.menu.profile[language]],
 				[translations.menu.model[language], translations.menu.roles[language]],
+				[translations.menu.images[language]],
 				[translations.menu.subscribe[language]]
 			])
 				.oneTime()

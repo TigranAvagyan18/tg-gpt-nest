@@ -35,7 +35,7 @@ export class CronService {
 					const currentDate = new Date();
 					const date = new Date(user.subscription.updatedAt);
 					const timeDiff = currentDate.getTime() - date.getTime();
-					const millisInMonth = 30 * 24 * 60 * 60 * 1000;
+					const millisInMonth = 7 * 24 * 60 * 60 * 1000;
 					const isOneMonthAgo = timeDiff >= millisInMonth;
 					if (isOneMonthAgo) {
 						user.subscription.rateId = 1;

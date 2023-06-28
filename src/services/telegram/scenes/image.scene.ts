@@ -50,7 +50,7 @@ export class ImageWizard {
 		const { prompt, size } = ctx.wizard.state;
 		try {
 			const url = await this.openai.textToImage(prompt, size);
-			await ctx.reply(url || 'Error');
+			await ctx.replyWithPhoto(url || 'Error');
 			await this.userService.updateLimits(ctx.session.telegramId, { images: 1 }, false);
 			await ctx.scene.leave();
 		} catch (error) {

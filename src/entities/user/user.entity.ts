@@ -43,13 +43,13 @@ export class User extends BaseEntity {
 	@Column({ type: 'varchar', nullable: true })
 	userName: string;
 
-	@Column({ default: 50000 })
+	@Column({ default: 15000 })
 	availableTokens: number;
 
-	@Column({ default: 60 })
+	@Column({ default: 15 })
 	availableAudio: number;
 
-	@Column({ default: 3 })
+	@Column({ default: 2 })
 	availableImages: number;
 
 	@Column({ default: 0 })
@@ -58,7 +58,7 @@ export class User extends BaseEntity {
 	@Column({ default: 0 })
 	bookedImages: number;
 
-	@Column({ type: 'enum', enum: Languages, default: Languages.EN })
+	@Column({ type: 'enum', enum: Languages, nullable: true })
 	language: Languages;
 
 	@Column({ type: 'enum', enum: GptModels, default: GptModels.gpt_3 })

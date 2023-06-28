@@ -20,6 +20,13 @@ export enum Status {
 	DECLINED
 }
 
+export enum Currencies {
+	RUB,
+	USDT,
+	BTC,
+	ETH
+}
+
 @Entity('payments')
 export class Payment extends BaseEntity {
 	@PrimaryGeneratedColumn('uuid')
@@ -28,11 +35,11 @@ export class Payment extends BaseEntity {
 	@Column({ type: 'enum', enum: Status, default: Status.PENDING })
 	status: Status;
 
-	@Column()
-	slug: string;
-
 	@Column({ type: 'real', default: 0 })
 	sum: number;
+
+	@Column({ type: 'enum', enum: Currencies, default: Currencies.RUB })
+	currency: Currencies;
 
 	@Column({ nullable: true })
 	userId: number;
