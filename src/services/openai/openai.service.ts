@@ -2,6 +2,7 @@ import { createReadStream } from 'fs';
 import { Configuration, OpenAIApi } from 'openai';
 import config from 'src/config';
 import { GptModels } from 'src/entities/user/user.entity';
+import translations from 'src/config/translations';
 import { MessageGpt } from '../telegram/telegram.types';
 
 const configuration = new Configuration({
@@ -21,7 +22,13 @@ export class OpenAI {
 	async chat(
 		messages: Array<MessageGpt>,
 		model = GptModels.gpt_3
-	): Promise<{ message: MessageGpt; usage: number } | { message: string; usage: number }> {
+	): Promise<
+		| { message: MessageGpt; usage: number }
+		| {
+				message: string;
+				usage: number;
+		  }
+	> {
 		let usage = 0;
 		try {
 			const response = await this.openai.createChatCompletion({ model: GptModels.gpt_3, messages });
@@ -31,15 +38,15 @@ export class OpenAI {
 			return { message, usage };
 		} catch (error) {
 			if (error?.response?.status === 429) {
-				const msg = 'Сервера еперегружены, попробуйте позже';
+				const msg = JSON.stringify(translations.errors.serversThrottling);
 				return { message: msg, usage };
 			}
 			if (error?.response?.data.error.code === 'context_length_exceeded') {
-				const msg = 'История переполнена, очистить историю бота можно через /restart';
+				const msg = JSON.stringify(translations.errors.contextLimitExceeded);
 				return { message: msg, usage };
 			}
 			console.log(error?.response?.data);
-			return { message: 'Неизвестная ошибка, тех. поддержка @topbestb', usage };
+			return { message: JSON.stringify(translations.errors.unknown), usage };
 		}
 	}
 

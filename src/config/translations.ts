@@ -16,12 +16,18 @@ const translations = {
 		ru: 'Модель изменен на '
 	},
 	chooseRole: {
-		en: 'Choose role, current - ',
-		ru: 'Выберите роль \nТекущая роль - '
+		en: `
+Choose the bot's personality, and it will give the answers corresponding to its role
+Current role - :role
+		`,
+		ru: `
+Выберите личность боту, и он будет подбирать ответы, соответствующие его роли
+Текущая роль - :role
+		`
 	},
 	roleChanged: {
 		en: 'Role changed to ',
-		ru: 'Роль изменен на '
+		ru: 'Роль изменена, теперь бот будет отвечать как '
 	},
 	menu: {
 		language: {
@@ -56,7 +62,7 @@ const translations = {
 		},
 		tokens: {
 			en: 'Tokens: ',
-			ru: 'Символы:'
+			ru: 'Символы: '
 		},
 		audio: {
 			en: 'Audio in seconds: ',
@@ -76,8 +82,8 @@ const translations = {
 		},
 		limitsUpdate: {
 			content: {
-				en: 'All limits update once a week',
-				ru: 'Все лимиты обновляются раз в неделю'
+				en: 'All limits update once a month',
+				ru: 'Все лимиты обновляются раз в месяц'
 			},
 			date: {
 				en: 'The next limit update will be on: ',
@@ -156,17 +162,17 @@ _Пример запроса: \\/buytokens 10000_
 			*Plus:*
 After purchasing a subscription, the limits will increase to:
 
-75000 tokens per week
-30 seconds of audio per week
-5 image generations per week
+300000 tokens per month
+120 seconds of audio per month
+5 image generations per month
 
 Price: 100 ₽			
 			`,
 			ru: `
 			*Plus:*
 После покупки подписки лимиты вырастут до:
-75000 символов в неделю 
-30 секунд аудио в неделю
+300000 символов в месяц 
+120 секунд аудио в месяц
 5 генераций картинок в месяц
 			
 Стоимость: 100 ₽`
@@ -176,17 +182,17 @@ Price: 100 ₽
 			*Plus\\+\\+:*
 After purchasing a subscription, the limits will increase to:
 
-175000 tokens per week
-60 seconds of audio per week
-5 image generations per week
+700000 tokens per month
+240 seconds of audio per month
+10 image generations per month
 
 Price: 200 ₽			
 			`,
 			ru: `
 			*Plus\\+\\+:*
 После покупки подписки лимиты вырастут до:
-175000 символов в неделю 
-60 секунд аудио в неделю
+700000 символов в месяц 
+240 секунд аудио в месяц
 10 генераций картинок в месяц
 			
 Стоимость: 200 ₽`
@@ -196,18 +202,18 @@ Price: 200 ₽
 			*Premium:*
 After purchasing a subscription, the limits will increase to:
 
-400000 tokens per week
-500 seconds of audio per week
-5 image generations per week
+1500000 tokens per month
+1000 seconds of audio per month
+25 image generations per month
 
 Price: 500 ₽			
 			`,
 			ru: `
 			*Premium:*
 После покупки подписки лимиты вырастут до:
-400000 символов в неделю 
-500 секунд аудио в неделю
-50 генераций картинок в месяц
+1500000 символов в месяц 
+1000 секунд аудио в месяц
+25 генераций картинок в месяц
 			
 Стоимость: 500 ₽`
 		}
@@ -226,6 +232,10 @@ _Request example: \\/image сat on a pizza flying through space_
 
 _Пример запроса: \\/image сat on a pizza flying through space_
 			`
+		},
+		quality: {
+			en: 'Image Quality',
+			ru: 'Качество изображения'
 		}
 	},
 	referrals: {
@@ -239,6 +249,132 @@ Total number of invited users: :count
 Суммарное количество приглашенных пользователей: :count
 			`
 		}
+	},
+	payments: {
+		subscriptionSuccess: {
+			en: 'Your subscription has been acquired',
+			ru: 'Подписка оформлена'
+		},
+		bookingSuccess: {
+			en: 'Congratulations on your purchase!',
+			ru: 'Поздравляем с покупкой!'
+		},
+		expired: {
+			en: 'Your subscription expired',
+			ru: 'Ваша подписка закончилась'
+		},
+		updated: {
+			en: 'Your limits have updated',
+			ru: 'Ваши лимиты обновились'
+		},
+		content: {
+			en: `
+Limits now:
+Tokens: 25000
+Audio: 30
+Images: 2
+			`,
+			ru: `
+Лимиты сейчас:
+Символы: 25000
+Аудио: 30
+Картинки: 2
+			`
+		},
+		button: {
+			en: 'Buy subscription',
+			ru: 'Купить подписку'
+		}
+	},
+	errors: {
+		smth: {
+			en: 'Something went wrong',
+			ru: 'Что-то пошло не так'
+		},
+		limitsExceeded: {
+			en: 'The character limit has been exceeded. For further use, purchase a subscription',
+			ru: 'Превышен лимит символов. Для дальнейшего пользования приобретите подписку'
+		},
+		lengthLess: {
+			en: 'The request length cannot be shorter than two characters',
+			ru: 'Длина запроса не может быть короче двух символов'
+		},
+		lengthMore: {
+			en: 'The request length cannot be more than two thousand characters',
+			ru: 'Длина запроса не может быть более двух тысяч символов'
+		},
+		manyRequests: {
+			en: 'Too many requests. Wait for a while…',
+			ru: 'Слишком много запросов, подождите…'
+		},
+		wait: {
+			en: '⏳ Please, wait. . .',
+			ru: '⏳ Пожалуйста, подождите. . .'
+		},
+		serversThrottling: {
+			en: 'Servers are unavailable now, please try again later',
+			ru: 'Сервера переполнены, попробуйте позже'
+		},
+		contextLimitExceeded: {
+			en: 'The request history is full. To clean up, use the /restart command',
+			ru: 'История запросов переполнена. Для очистки воспользуйтесь командой /restart'
+		},
+		unknown: {
+			en: 'Unknown error. Contact technical support @topbestb',
+			ru: 'Неизвестная ошибка. Обратитесь в техподдержку @topbestb'
+		}
+	},
+	welcome: {
+		en: `
+ChatGPT is ready to use!
+
+⚡️The bot uses GPT-3.5, GPT-4 models
+
+Here is a list of what this bot can do:
+	- Write unique texts
+	- Rewrite texts
+	- Write and edit code
+	- Translate from any language
+	- Retell anything
+	- and much more…
+
+Instruction manual:
+🔤 To recieve a text answer, write your question in any language. You can also record a voice message with your request.
+	🚀 To switch between GPT-3.5 and GPT-4 models, use the /model command (note that the GPT-4 model is only available with subscription).
+	✅ Symbols are necessary for the bot to work and are taken into account both in the request and in the response, as well as in the chat history, in order to spend less characters, use the / comandaaYAzabil command after finishing the dialog.
+	👤 To view your balance, use the command /profile
+	💳 To purchase and manage your subscription, use the /subscribe command
+
+Limitations:
+	😀  Each user using the free plan has a limit on the number of characters:
+At the moment you have :tokens characters available for a month.
+You can send a request using voice messages, but no more than :audio seconds per month.		
+		`,
+		ru: `
+ChatGPT готов к использованию!
+
+⚡️Бот использует модели GPT-3.5, GPT-4
+
+Вот некоторый список того, что умеет данный бот:
+- Писать уникальные тексты
+- Делать рерайт текстов
+- Писать и редактировать код
+- Перевод с любого языка
+- Пересказывать что-либо
+- и многое другое…
+
+Инструкция:
+🔤 Чтобы получить текстовый ответ, напишите свой вопрос на любом языке. Также вы можете просто записать голосовое сообщение с вашим запросом.
+🚀 Чтобы переключиться между моделями GPT-3.5 и GPT-4, используйте команду /model (обратите внимание, что модель GPT-4 доступна только по подписке).
+✅ Символы необходимы для работы бота и учитываются как в запросе, так и в ответе, а также в истории переписки, поэтому, чтобы потратить меньше символов, используйте команду /restart после окончания диалога.
+👤 Чтобы посмотреть свой баланс, используйте команду /profile
+💳 Для покупки и для управления подпиской используйте команду /subscribe
+
+Ограничения:
+😀 Каждый пользователь, использующий бесплатный тариф имеет ограничение на количество символов:
+На данный момент у вас доступно :tokens символов на месяц.
+Вы можете отправлять запрос с помощью голосовых сообщений, но не больше чем :audio секунд на месяц.
+		`
 	}
 };
 

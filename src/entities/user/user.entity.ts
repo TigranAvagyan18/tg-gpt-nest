@@ -28,8 +28,7 @@ export enum GptModels {
 export enum Roles {
 	DEFAULT = 'Обычный',
 	GOPNIK = 'Гопник',
-	RAPPER = 'Рэпер',
-	VILLAGER = 'Деревенщина'
+	RAPPER = 'Рэпер'
 }
 
 @Entity('users')

@@ -17,7 +17,7 @@ export const ROLE_COMMAND = 'role';
 export const SUBSCRIBE_COMMAND = 'subscribe';
 export const IMAGE_COMMAND = 'image';
 export const BUT_TOKENS_COMMAND = 'buytokens';
-export const RESTART_COMMAND = 'deletecontext';
+export const RESTART_COMMAND = 'restart';
 
 // Actions
 export const LANGUAGE_ACTION = Object.values(Languages);

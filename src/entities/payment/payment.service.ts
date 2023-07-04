@@ -6,6 +6,7 @@ import { InjectBot } from 'nestjs-telegraf';
 import config from 'src/config';
 import { User } from 'src/entities/user/user.entity';
 import { UserService } from 'src/entities/user/user.service';
+import translations from 'src/config/translations';
 import { Rate } from '../subscription/rate.entity';
 import { SubscriptionService } from '../subscription/subscription.service';
 import { Booking, BookingPrices } from '../subscription/booking.entity';
@@ -114,13 +115,13 @@ export class PaymentService {
 				images: rate.images
 			});
 			await this.subscriptionService.updateSubscription(user.subscriptionId, rate.id);
-			msg = 'Подписка оформлена';
+			msg = translations.payments.subscriptionSuccess[user.language];
 		} else if (booking) {
 			const sum = this.getSumOfBooking(booking);
 			if (sum === Number(data.withdraw_amount)) {
 				user.bookedTokens += booking.tokens || 0;
 				await user.save();
-				msg = 'Поздравляем с покупкой';
+				msg = translations.payments.bookingSuccess[user.language];
 			}
 		}
 

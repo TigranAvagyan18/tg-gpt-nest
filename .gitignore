@@ -1,7 +1,9 @@
 # compiled output
 /dist
 /node_modules
-
+.yarn
+yarn.lock
+.yarnrc.yml
 .env
 
 # Logs

@@ -31,6 +31,7 @@ import {
 import translations from 'src/config/translations';
 import { getRole } from 'src/utils/roles';
 import config from 'src/config';
+import { formatMilliseconds } from 'src/utils/time';
 import { OpenAI } from '../openai/openai.service';
 import { Audio } from '../audio/audio.service';
 import { TelegrafExceptionFilter } from './exception.filter';
@@ -59,7 +60,7 @@ export class Telegram {
 			return;
 		}
 		const { id, username } = ctx.message?.from || ctx.callbackQuery?.from || {};
-		console.log(id, username);
+		this.logger.log(JSON.stringify({ id, username }));
 		if (!ctx.session.userId) {
 			let user = await this.userService.findByTelegramId(id);
 			if (!user) {
@@ -106,7 +107,7 @@ export class Telegram {
 				.resize()
 		);
 		if (language) {
-			await this.sendMenu(ctx, language);
+			await this.sendMenu(ctx, language, { tokens: user.availableTokens, audio: user.availableAudio });
 		} else {
 			await this.chooseLanguage(ctx);
 		}
@@ -131,27 +132,25 @@ export class Telegram {
 
 		const user = await this.userService.findByTelegramId(telegramId);
 
-		const subscription = await this.subscriptionService.getSubscriptionDetails(subscriptionId);
+		const { rate, updatedAt } = await this.subscriptionService.getSubscriptionDetails(subscriptionId);
 
 		const message = `
 ${translations.profile.limits[language]}
-${translations.profile.tokens[language]} ${user?.availableTokens} / ${subscription?.tokens}
-${translations.profile.audio[language]} ${user?.availableAudio} / ${subscription?.audio}
-${translations.profile.images[language]} ${user?.availableImages} / ${subscription?.images}
+${translations.profile.tokens[language]} ${user?.availableTokens} / ${rate?.tokens}
+${translations.profile.audio[language]} ${user?.availableAudio} / ${rate?.audio}
+${translations.profile.images[language]} ${user?.availableImages} / ${rate?.images}
 ${user.bookedTokens > 0 ? translations.profile.bookedTokens[language] : ''}
-${translations.profile.subscription[language]} ${subscription?.name}
+${translations.profile.subscription[language]} ${rate?.name}
 
 ${translations.profile.limitsUpdate.content[language]}
-${translations.profile.limitsUpdate.date[language]}
+${translations.profile.limitsUpdate.date[language]} ${formatMilliseconds(updatedAt.getTime())}
 
 ${translations.profile.referral.title[language]}
 ${translations.profile.referral.invite[language]}
 ${translations.profile.referral.invited[language]} ${user.referralCount}
-${translations.profile.referral.inviteLink[language]} [${
-			language === Languages.RU ? 'Ссылка' : 'Link'
-		}](${`https://t.me/openaichatpro_bot?start=${telegramId}`})
-
-
+${
+	translations.profile.referral.inviteLink[language]
+} [https\\:\\/\\/t\\.me\\/openaichatpro\\_bot\\?start\\=${telegramId}](${`https://t.me/openaichatpro_bot?start=${telegramId}`})
     `;
 
 		await ctx.replyWithMarkdownV2(message);
@@ -175,13 +174,14 @@ ${translations.profile.referral.inviteLink[language]} [${
 	async chooseRole(ctx: AppContext) {
 		const lang = ctx.session.language;
 		await ctx.reply(
-			translations.chooseRole[lang] + ctx.session.role,
+			translations.chooseRole[lang].replace(':role', ctx.session.role),
 			Markup.inlineKeyboard(
 				Object.keys(Roles).map((key: keyof typeof Roles) => Markup.button.callback(Roles[key], key))
 			)
 		);
 	}
 
+	@Action(SUBSCRIPTION_HEARS)
 	@Hears(SUBSCRIPTION_HEARS)
 	@Command(SUBSCRIBE_COMMAND)
 	async chooseSubscription(ctx: AppContext) {
@@ -252,7 +252,7 @@ ${translations.subscriptions.buy.action.price[language].replace(':price', price)
 		ctx.session.language = language;
 
 		await ctx.deleteMessage(ctx.callbackQuery.message.message_id);
-		await this.sendMenu(ctx, language);
+		await this.sendMenu(ctx, language, { tokens: user.availableTokens, audio: user.availableAudio });
 	}
 
 	@Action(ROLE_ACTION)
@@ -319,6 +319,7 @@ ${translations.subscriptions.buy.action.price[language].replace(':price', price)
 	@Command(IMAGE_COMMAND)
 	async image(ctx: AppContext & Scenes.SceneContext) {
 		const userId = ctx.message.from.id;
+		const { language } = ctx.session;
 
 		const msg = ctx.message.text;
 		const newmsg = msg.replace('/image', '');
@@ -326,12 +327,13 @@ ${translations.subscriptions.buy.action.price[language].replace(':price', price)
 		const isExpired = await this.userService.checkLimits(userId, 'image');
 
 		if (isExpired) {
-			await ctx.reply('Ваш лимит закончился, можете купить подписку');
+			await ctx.reply(translations.errors.limitsExceeded[language]);
+			await this.chooseSubscription(ctx);
 			return;
 		}
 
 		if (newmsg.length < 2) {
-			await ctx.reply('Запрос не может быть короче двух символов');
+			await ctx.reply(translations.errors.lengthLess[language]);
 			return;
 		}
 
@@ -342,25 +344,27 @@ ${translations.subscriptions.buy.action.price[language].replace(':price', price)
 	async handleText(ctx: AppContext) {
 		const userId = ctx.message.from.id;
 		const messageCnt = ctx.message.text;
+		const { language } = ctx.session;
 		const isExpired = await this.userService.checkLimits(userId, 'token');
 
 		if (isExpired) {
-			await ctx.reply('Ваш лимит закончился, можете купить подписку');
+			await ctx.reply(translations.errors.limitsExceeded[language]);
+			await this.chooseSubscription(ctx);
 			return;
 		}
 
 		if (messageCnt.length < 2) {
-			await ctx.reply('Запрос не может быть короче двух символов');
+			await ctx.reply(translations.errors.lengthLess[language]);
 			return;
 		}
 
 		if (messageCnt.length > 2000) {
-			await ctx.reply('Запрос не может быть больше двух тысяч символов');
+			await ctx.reply(translations.errors.lengthMore[language]);
 			return;
 		}
 
 		if (ctx.session.waitingForResponse) {
-			await ctx.reply('⏳ Слишком много запросов, подождите. . .');
+			await ctx.reply(translations.errors.manyRequests[language]);
 			return;
 		}
 
@@ -368,14 +372,15 @@ ${translations.subscriptions.buy.action.price[language].replace(':price', price)
 		try {
 			ctx.session.waitingForResponse = true;
 
-			const loading = await ctx.reply('⏳ Пожалуйста, подождите. . .');
+			const loading = await ctx.reply(translations.errors.wait[language]);
 
 			const { message, usage } = await this.openai.chat(ctx.session.messages, ctx.session.model);
 
 			await ctx.deleteMessage(loading.message_id);
 
 			if (typeof message !== 'object') {
-				await ctx.reply(message);
+				const msg = JSON.parse(message);
+				await ctx.reply(msg[language]);
 				return;
 			}
 
@@ -393,17 +398,19 @@ ${translations.subscriptions.buy.action.price[language].replace(':price', price)
 	@On('voice')
 	async handleVoice(ctx: AppContext) {
 		const userId = ctx.message.from.id;
+		const { language } = ctx.session;
 
 		const isExpiredAudio = await this.userService.checkLimits(userId, 'audio');
 		const isExpiredToken = await this.userService.checkLimits(userId, 'token');
 
 		if (isExpiredAudio || isExpiredToken) {
-			await ctx.reply('Ваш лимит закончился, можете купить подписку');
+			await ctx.reply(translations.errors.limitsExceeded[language]);
+			await this.chooseSubscription(ctx);
 			return;
 		}
 
 		if (ctx.session.waitingForResponse) {
-			await ctx.reply('⏳ Слишком много запросов, подождите. . .');
+			await ctx.reply(translations.errors.manyRequests[language]);
 			return;
 		}
 
@@ -418,11 +425,13 @@ ${translations.subscriptions.buy.action.price[language].replace(':price', price)
 				return;
 			}
 
+			const loading = await ctx.reply(translations.errors.wait[language]);
+
 			const voiceMp3 = await this.audio.create(link.toString(), userId);
 			const t = await this.openai.speechToText(voiceMp3);
 
 			if (t.length < 2) {
-				await ctx.reply('Запрос не может быть короче двух символов');
+				await ctx.reply(translations.errors.lengthLess[language]);
 				return;
 			}
 
@@ -436,8 +445,11 @@ ${translations.subscriptions.buy.action.price[language].replace(':price', price)
 
 			const { message, usage } = await this.openai.chat(ctx.session.messages, ctx.session.model);
 
+			await ctx.deleteMessage(loading.message_id);
+
 			if (typeof message !== 'object') {
-				await ctx.reply(message);
+				const msg = JSON.parse(message);
+				await ctx.reply(msg[language]);
 				return;
 			}
 
@@ -446,39 +458,16 @@ ${translations.subscriptions.buy.action.price[language].replace(':price', price)
 			ctx.session.messages.push(message);
 			await ctx.reply(`${message.content}`);
 		} catch (error) {
-			await ctx.reply('Что-то пошло не так');
+			await ctx.reply(translations.errors.smth[language]);
 			console.log(error);
 		} finally {
 			ctx.session.waitingForResponse = false;
 		}
 	}
 
-	async sendMenu(ctx: AppContext, language: Languages) {
+	async sendMenu(ctx: AppContext, language: Languages, { tokens, audio }: { tokens: number; audio: number }) {
 		await ctx.reply(
-			`ChatGPT готов к использованию!
-	
-				⚡️Бот использует модели GPT-3.5, GPT-4
-				
-				Вот некоторый список того, что умеет данный бот:
-				- Писать уникальные тексты
-				- Делать рерайт текстов
-				- Писать и редактировать код
-				- Перевод с любого языка
-				- Пересказывать что-либо
-				- и многое другое…
-				
-				Инструкция:
-				🔤 Чтобы получить текстовый ответ, напишите свой вопрос на любом языке. Также вы можете просто записать голосовое сообщение с вашим запросом.
-				🚀 Чтобы переключиться между моделями GPT-3.5 и GPT-4, используйте команду /model (обратите внимание, что модель GPT-4 доступна только по подписке).
-				✅ Символы необходимы для работы бота и учитываются как в запросе, так и в ответе, а также в истории переписки, поэтому, чтобы потратить меньше символов, используйте команду /restart после окончания диалога.
-				👤 Чтобы посмотреть свой баланс, используйте команду /profile
-				💳 Для покупки и для управления подпиской используйте команду /subscribe
-				
-				Ограничения:
-				😀 Каждый пользователь, использующий бесплатный тариф имеет ограничение на количество символов:
-				На данный момент у вас доступно 10 000 символов на день, но не больше чем 50 000 символов на месяц.
-				Вы можете отправлять запрос с помощью голосовых сообщений, но не больше чем 60 секунд на месяц.
-				`,
+			translations.welcome[language].replace(':tokens', tokens.toString()).replace(':audio', audio.toString()),
 			Markup.keyboard([
 				[translations.menu.language[language], translations.menu.profile[language]],
 				[translations.menu.model[language], translations.menu.roles[language]],

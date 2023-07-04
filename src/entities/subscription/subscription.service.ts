@@ -22,7 +22,7 @@ export class SubscriptionService {
 
 	async getSubscriptionDetails(id: string) {
 		const subscription = await this.subscriptionRepository.findOne({ where: { id }, relations: ['rate'] });
-		return subscription?.rate;
+		return subscription;
 	}
 
 	async createSubscription() {
